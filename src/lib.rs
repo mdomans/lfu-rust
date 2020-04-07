@@ -16,7 +16,7 @@ impl LFU {
             items: HashMap::new(),
             max_size: 0,
             key_count: 0,
-            frequency_list: Vec::with_capacity(10),
+            frequency_list: Vec::with_capacity(0)
         }
     }
 
@@ -32,46 +32,52 @@ impl LFU {
     fn increment_frequency(&mut self, key: &String ) {
         let key_frequency = self.get_frequency(key);
 
-        if self.frequency_list.len() <= key_frequency {
-            let mut target_list = Vec::new();
-            target_list.push(key.to_string());
-            self.frequency_list.push(target_list);
-
-        } else {
-            let key_list = &mut self.frequency_list[key_frequency];
-            if !key_list.contains(key){
-                key_list.push(key.to_string());
-            } else {
-                // remove key from lower list
-                key_list.retain(|lkey|lkey.ne(key));
-                // move key to upper list
-                // create new list if missing
-                if self.frequency_list.len() <= key_frequency + 1 {
-                    let mut target_list = Vec::new();
-                    target_list.push(key.to_string());
-                    self.frequency_list.push(target_list);
+        // normally we would start the program with frequency_list having one empty list inside
+        // but to keep with Rust spirit we handle emptiness and have 0 overhead
+        match self.frequency_list.get_mut(key_frequency){
+            None => {
+                let mut target_list = Vec::new();
+                target_list.push(key.to_string());
+                self.frequency_list.push(target_list);
+            },
+            Some(key_list) => {
+                if !key_list.contains(key) {
+                    key_list.push(key.to_string());
                 } else {
-                    self.frequency_list[key_frequency+1].push(key.to_string());
+                    key_list.retain(|lkey|lkey.ne(key));
+                    match self.frequency_list.get_mut(key_frequency+1){
+                        None => {
+                            let mut target_list = Vec::new();
+                            target_list.push(key.to_string());
+                            self.frequency_list.push(target_list);
+                        },
+                        Some(key_list) => {
+                            key_list.push(key.to_string())
+                        }
+                    }
                 }
             }
         }
-
     }
 
     fn zero_frequency(&mut self, key: &String ) {
-        let key_frequency = self.get_frequency(key);
-        if key_frequency == 0 {
-            return
+        match self.get_frequency(key) {
+            0 => return,
+            key_frequency => {
+                match self.frequency_list.get_mut(key_frequency) {
+                    Some(key_list) => {
+                        key_list.retain(|lkey| lkey.ne(key))
+                    },
+                    None => panic!("returned frequency >0 for missing key"),
+                }
+            }
         }
-        let key_list = &mut self.frequency_list[key_frequency as usize];
-        key_list.retain(|lkey|lkey.ne(key));
     }
 
     pub fn get(&mut self, key: &String ) -> Option<&String> {
-        if !self.items.contains_key(k) {
+        if !self.items.contains_key(key) {
             return None
         }
-        // because increment is slow
         self.increment_frequency(key);
         self.items.get(key)
     }
