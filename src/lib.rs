@@ -30,15 +30,14 @@ impl LFU {
     }
 
     fn increment_frequency(&mut self, key: &String ) {
-        let key_frequency = self.get_frequency(key);
-
         // normally we would start the program with frequency_list having one empty list inside
         // but to keep with Rust spirit we handle emptiness and have 0 overhead
+
+        let key_frequency = self.get_frequency(key);
+
         match self.frequency_list.get_mut(key_frequency){
             None => {
-                let mut target_list = Vec::new();
-                target_list.push(key.to_string());
-                self.frequency_list.push(target_list);
+                self.frequency_list.push(vec![key.to_string()]);
             },
             Some(key_list) => {
                 if !key_list.contains(key) {
@@ -47,9 +46,7 @@ impl LFU {
                     key_list.retain(|lkey|lkey.ne(key));
                     match self.frequency_list.get_mut(key_frequency+1){
                         None => {
-                            let mut target_list = Vec::new();
-                            target_list.push(key.to_string());
-                            self.frequency_list.push(target_list);
+                            self.frequency_list.push(vec![key.to_string()]);
                         },
                         Some(key_list) => {
                             key_list.push(key.to_string())
@@ -75,11 +72,13 @@ impl LFU {
     }
 
     pub fn get(&mut self, key: &String ) -> Option<&String> {
-        if !self.items.contains_key(key) {
-            return None
+        match self.items.contains_key(key) {
+            false => None,
+            true => {
+                self.increment_frequency(key);
+                self.items.get(key)
+            }
         }
-        self.increment_frequency(key);
-        self.items.get(key)
     }
 
     pub fn insert(&mut self, key: String, value: String) -> Option<String> {
