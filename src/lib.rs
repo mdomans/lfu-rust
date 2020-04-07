@@ -20,38 +20,36 @@ impl LFU {
         }
     }
 
-    pub fn get_frequency(&self, key: &String ) -> usize {
-        for (index, key_list) in self.frequency_list.iter().enumerate() {
-            if key_list.contains(key){
-                return index
+    pub fn get_frequency(&mut self, key: &String ) -> usize {
+        match self.frequency_list.len() {
+            0 => {
+                self.frequency_list.push(Vec::with_capacity(0));
+            },
+            _ => {
+                for (index, key_list) in self.frequency_list.iter().enumerate() {
+                    if key_list.contains(key) {
+                        return index
+                    }
+                }
             }
         }
-        0
+        return 0
     }
 
     fn increment_frequency(&mut self, key: &String ) {
-        // normally we would start the program with frequency_list having one empty list inside
-        // but to keep with Rust spirit we handle emptiness and have 0 overhead
-
         let key_frequency = self.get_frequency(key);
+        let key_list = &mut self.frequency_list[key_frequency];
 
-        match self.frequency_list.get_mut(key_frequency){
-            None => {
-                self.frequency_list.push(vec![key.to_string()]);
-            },
-            Some(key_list) => {
-                if !key_list.contains(key) {
-                    key_list.push(key.to_string());
-                } else {
-                    key_list.retain(|lkey|lkey.ne(key));
-                    match self.frequency_list.get_mut(key_frequency+1){
-                        None => {
-                            self.frequency_list.push(vec![key.to_string()]);
-                        },
-                        Some(key_list) => {
-                            key_list.push(key.to_string())
-                        }
-                    }
+        if !key_list.contains(key) {
+            key_list.push(key.to_string());
+        } else {
+            key_list.retain(|lkey|lkey.ne(key));
+            match self.frequency_list.get_mut(key_frequency+1){
+                None => {
+                    self.frequency_list.push(vec![key.to_string()]);
+                },
+                Some(key_list) => {
+                    key_list.push(key.to_string())
                 }
             }
         }
