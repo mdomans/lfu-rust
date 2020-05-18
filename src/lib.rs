@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::Borrow;
 
 
-#[derive(Debug)]
+#[derive(Debug,Default)]
 pub struct LFU {
     items: HashMap<String, String>,
     frequency_list: Vec<Vec<String>>,
@@ -19,28 +19,39 @@ impl LFU {
             frequency_list: Vec::with_capacity(0)
         }
     }
-
-    pub fn get_frequency(&mut self, key: &String ) -> usize {
-        match self.frequency_list.len() {
-            0 => {
-                self.frequency_list.push(Vec::with_capacity(0));
-            },
-            _ => {
-                for (index, key_list) in self.frequency_list.iter().enumerate() {
-                    if key_list.contains(key) {
-                        return index
-                    }
+    ///
+    /// Allows to check frequency for a key of given value
+    ///
+    /// ```
+    /// use lfu::LFU;
+    /// let mut lfu = LFU::new();
+    /// lfu.get_frequency("a");
+    /// lfu.insert("a".to_string(), "b".to_string());
+    /// lfu.get("a");
+    /// assert_eq!(lfu.get_frequency("a"), 0);
+    /// lfu.get("a");
+    /// assert_eq!(lfu.get_frequency("a"), 1);
+    /// lfu.get("a");
+    /// assert_eq!(lfu.get_frequency("a"), 2);
+    /// ```
+    pub fn get_frequency(&mut self, key: &str ) -> usize {
+        if self.frequency_list.len() == 0 {
+            self.frequency_list.push(Vec::with_capacity(0));
+        } else {
+            for (index, key_list) in self.frequency_list.iter().enumerate() {
+                if key_list.iter().any(|e| e == key) {
+                    return index
                 }
             }
         }
-        return 0
+        0
     }
 
-    fn increment_frequency(&mut self, key: &String ) {
+    fn increment_frequency(&mut self, key: &str ) {
         let key_frequency = self.get_frequency(key);
         let key_list = &mut self.frequency_list[key_frequency];
 
-        if !key_list.contains(key) {
+        if !key_list.iter().any(|e| e == key) {
             key_list.push(key.to_string());
         } else {
             key_list.retain(|lkey|lkey.ne(key));
@@ -55,35 +66,52 @@ impl LFU {
         }
     }
 
-    fn zero_frequency(&mut self, key: &String ) {
-        match self.get_frequency(key) {
-            0 => return,
-            key_frequency => {
-                match self.frequency_list.get_mut(key_frequency) {
-                    Some(key_list) => {
-                        key_list.retain(|lkey| lkey.ne(key))
-                    },
-                    None => panic!("returned frequency >0 for missing key"),
-                }
+    fn zero_frequency(&mut self, key: &str) {
+        let key_frequency = self.get_frequency(key);
+        if key_frequency !=0 {
+            if let Some(key_list) = self.frequency_list.get_mut(key_frequency) {
+                key_list.retain(|lkey| lkey.ne(key))
+            } else {
+                panic!("returned frequency >0 for missing key")
             }
+
         }
     }
-
-    pub fn get(&mut self, key: &String ) -> Option<&String> {
-        match self.items.contains_key(key) {
-            false => None,
-            true => {
-                self.increment_frequency(key);
-                self.items.get(key)
-            }
+    ///
+    /// Get a Some(value) or None for a given key
+    ///
+    ///
+    /// ```
+    /// use lfu::LFU;
+    /// let mut lfu = LFU::new();
+    /// assert_eq!(lfu.get("a"), None);
+    /// lfu.insert("a".to_string(), "b".to_string());
+    /// assert_eq!(lfu.get("a"), Some(&"b".to_string()));
+    /// ```
+    pub fn get(&mut self, key: &str ) -> Option<&String> {
+        if self.items.contains_key(key) {
+            self.increment_frequency(key);
+            return self.items.get(key)
         }
+        None
     }
-
+    ///
+    /// Insert a value into LFU
+    ///
+    ///
+    /// ```
+    /// use lfu::LFU;
+    /// let mut lfu = LFU::new();
+    /// lfu.insert("a".to_string(), "b".to_string());
+    /// ```
     pub fn insert(&mut self, key: String, value: String) -> Option<String> {
         self.zero_frequency(key.borrow());
         self.items.insert(key, value)
 
     }
+
+
+
 
 }
 
