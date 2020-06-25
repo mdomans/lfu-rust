@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::borrow::Borrow;
+use bytes::Bytes;
 
 
 #[derive(Debug,Default)]
 pub struct LFU {
-    items: HashMap<String, String>,
+    items: HashMap<String, Bytes>,
     frequency_list: Vec<Vec<String>>,
     max_size: usize,
     key_count: usize,
@@ -24,9 +25,10 @@ impl LFU {
     ///
     /// ```
     /// use lfu::LFU;
+    /// use bytes::Bytes;
     /// let mut lfu = LFU::new();
     /// lfu.get_frequency("a");
-    /// lfu.insert("a".to_string(), "b".to_string());
+    /// lfu.insert("a".to_string(), Bytes::from("b"));
     /// lfu.get("a");
     /// assert_eq!(lfu.get_frequency("a"), 0);
     /// lfu.get("a");
@@ -83,12 +85,13 @@ impl LFU {
     ///
     /// ```
     /// use lfu::LFU;
+    /// use bytes::Bytes;
     /// let mut lfu = LFU::new();
     /// assert_eq!(lfu.get("a"), None);
-    /// lfu.insert("a".to_string(), "b".to_string());
-    /// assert_eq!(lfu.get("a"), Some(&"b".to_string()));
+    /// lfu.insert("a".to_string(), Bytes::from("b"));
+    /// assert_eq!(lfu.get("a"), Some(&Bytes::from("b")));
     /// ```
-    pub fn get(&mut self, key: &str ) -> Option<&String> {
+    pub fn get(&mut self, key: &str ) -> Option<&Bytes> {
         if self.items.contains_key(key) {
             self.increment_frequency(key);
             return self.items.get(key)
@@ -101,10 +104,11 @@ impl LFU {
     ///
     /// ```
     /// use lfu::LFU;
+    /// use bytes::Bytes;
     /// let mut lfu = LFU::new();
-    /// lfu.insert("a".to_string(), "b".to_string());
+    /// lfu.insert("a".to_string(), Bytes::from("b"));
     /// ```
-    pub fn insert(&mut self, key: String, value: String) -> Option<String> {
+    pub fn insert(&mut self, key: String, value: Bytes) -> Option<Bytes> {
         self.zero_frequency(key.borrow());
         self.items.insert(key, value)
 
@@ -119,25 +123,26 @@ impl LFU {
 #[cfg(test)]
 mod tests {
     use crate::*;
+    use bytes::Bytes;
 
     #[test]
     fn it_works() {
         let mut lfu = LFU::new();
-        lfu.insert("a".to_string(), "42".to_string());
-        lfu.insert("b".to_string(), "43".to_string());
-        lfu.insert("d".to_string(), "43".to_string());
-        lfu.insert("c".to_string(), "44".to_string());
-        assert_eq!(lfu.get(&"a".to_string()), Some(&"42".to_string()));
-        assert_eq!(lfu.get(&"b".to_string()), Some(&"43".to_string()));
-        assert_eq!(lfu.get(&"c".to_string()), Some(&"44".to_string()));
-        assert_eq!(lfu.get(&"a".to_string()), Some(&"42".to_string()));
-        assert_eq!(lfu.get(&"a".to_string()), Some(&"42".to_string()));
-        assert_eq!(lfu.get(&"b".to_string()), Some(&"43".to_string()));
-        assert_eq!(lfu.get(&"b".to_string()), Some(&"43".to_string()));
-        assert_eq!(lfu.get(&"b".to_string()), Some(&"43".to_string()));
-        assert_eq!(lfu.get(&"b".to_string()), Some(&"43".to_string()));
-        assert_eq!(lfu.get(&"a".to_string()), Some(&"42".to_string()));
-        assert_eq!(lfu.get(&"d".to_string()), Some(&"43".to_string()));
+        lfu.insert("a".to_string(), Bytes::from("42"));
+        lfu.insert("b".to_string(), Bytes::from("43"));
+        lfu.insert("d".to_string(), Bytes::from("43"));
+        lfu.insert("c".to_string(), Bytes::from("44"));
+        assert_eq!(lfu.get(&"a".to_string()), Some(&Bytes::from("42")));
+        assert_eq!(lfu.get(&"b".to_string()), Some(&Bytes::from("43")));
+        assert_eq!(lfu.get(&"c".to_string()), Some(&Bytes::from("44")));
+        assert_eq!(lfu.get(&"a".to_string()), Some(&Bytes::from("42")));
+        assert_eq!(lfu.get(&"a".to_string()), Some(&Bytes::from("42")));
+        assert_eq!(lfu.get(&"b".to_string()), Some(&Bytes::from("43")));
+        assert_eq!(lfu.get(&"b".to_string()), Some(&Bytes::from("43")));
+        assert_eq!(lfu.get(&"b".to_string()), Some(&Bytes::from("43")));
+        assert_eq!(lfu.get(&"b".to_string()), Some(&Bytes::from("43")));
+        assert_eq!(lfu.get(&"a".to_string()), Some(&Bytes::from("42")));
+        assert_eq!(lfu.get(&"d".to_string()), Some(&Bytes::from("43")));
         print!("{:?}", lfu);
 
     }
