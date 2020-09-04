@@ -156,6 +156,8 @@ impl LFU {
     /// use bytes::Bytes;
     /// let mut lfu = LFU::new();
     /// lfu.insert("a".to_string(), Bytes::from("b"));
+    /// lfu.insert("a".to_string(), Bytes::from("z"));
+    /// assert_eq!(lfu.get("a"), Some(&Bytes::from("z")));
     /// ```
     pub fn insert(&mut self, key: String, value: Bytes) -> Option<Bytes> {
         let key_clone = key.clone();
