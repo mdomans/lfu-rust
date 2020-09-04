@@ -141,7 +141,7 @@ impl LFU {
                 let ref_cell = Rc::new(RefCell::new(next_freq));
                 parent_frequency_node.next = Some(ref_cell.clone());
             }
-            let mut next_frequency_node = parent_frequency_node.next.as_ref().unwrap();
+            let next_frequency_node = parent_frequency_node.next.as_ref().unwrap();
             next_frequency_node.borrow_mut().items.push(key.to_owned());
             next_frequency_node.clone()
         };
