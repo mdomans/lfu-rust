@@ -131,32 +131,21 @@ impl LFU {
             return None;
         }
         let item = self.items.get_mut(key).unwrap();
-
-        item.parent = if Rc::ptr_eq(&item.parent, &self.frequency_head) {
-
+        item.parent = {
             let mut parent_frequency_node = item.parent.borrow_mut();
             // pop the key
             parent_frequency_node.items.retain(|x| x != key);
-
-            let mut next_frequency_node = match parent_frequency_node.next {
-                Some(ref next_freq) => {
-                    // push the key
-                    next_freq
-                },
-                None => {
-                    let mut next_freq = FrequencyNode::new(parent_frequency_node.value + 1, None);
-                    let ref_cell = Rc::new(RefCell::new(next_freq));
-                    parent_frequency_node.next = Some(ref_cell.clone());
-                    ref_cell
-                }
-            };
+            // provision next node
+            if parent_frequency_node.next.is_none() {
+                let next_freq = FrequencyNode::new(parent_frequency_node.value + 1, None);
+                let ref_cell = Rc::new(RefCell::new(next_freq));
+                parent_frequency_node.next = Some(ref_cell.clone());
+            }
+            let mut next_frequency_node = parent_frequency_node.next.as_ref().unwrap();
             next_frequency_node.borrow_mut().items.push(key.to_owned());
             next_frequency_node.clone()
-        } else {
-            item.parent.clone()
         };
-
-        Some(&self.items.get(key).unwrap().data)
+        Some(&item.data)
     }
     ///
     /// Insert a value into LFU
