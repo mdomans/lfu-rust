@@ -138,24 +138,20 @@ impl LFU {
             // pop the key
             parent_frequency_node.items.retain(|x| x != key);
 
-            match parent_frequency_node.next {
+            let mut next_frequency_node = match parent_frequency_node.next {
                 Some(ref next_freq) => {
                     // push the key
-                    next_freq.borrow_mut().items.push(key.to_owned());
-                    item.parent.clone()
+                    next_freq
                 },
                 None => {
                     let mut next_freq = FrequencyNode::new(parent_frequency_node.value + 1, None);
-                    // push the key
-
                     let ref_cell = Rc::new(RefCell::new(next_freq));
                     parent_frequency_node.next = Some(ref_cell.clone());
-
-                    next_freq.items.push(key.to_owned());
-                    ref_cell.clone()
+                    ref_cell
                 }
-            }
-
+            };
+            next_frequency_node.borrow_mut().items.push(key.to_owned());
+            next_frequency_node.clone()
         } else {
             item.parent.clone()
         };
