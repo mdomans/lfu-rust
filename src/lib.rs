@@ -14,21 +14,21 @@
 use bytes::Bytes;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 #[derive(Debug, Default)]
 struct FrequencyNode {
     // frequency node value
     pub value: u32,
     items: Vec<String>,
-    next: Option<Rc<FrequencyNode>>,
-    prev: Option<Weak<FrequencyNode>>
+    next: Option<Rc<RefCell<FrequencyNode>>>,
+    // prev: Option<Weak<RefCell<FrequencyNode>>>
 }
 
 impl FrequencyNode {
-    pub fn new() -> Self {
+    pub fn new(value: u32, next:Option<Rc<RefCell<FrequencyNode>>>) -> Self {
         FrequencyNode {
-            value: 0, items: vec![], next: None, prev: None
+            value, items: vec![], next
         }
     }
 }
@@ -57,7 +57,7 @@ pub struct LFU {
 
 impl LFU {
     pub fn new() -> Self {
-        let frequency_head = FrequencyNode::new();
+        let frequency_head = FrequencyNode::new(0, None);
         LFU {
             items: HashMap::new(),
             max_size: 64,
@@ -95,7 +95,23 @@ impl LFU {
     /// assert_eq!(lfu.get_frequency("a"), 2);
     /// ```
     pub fn get_frequency(&mut self, key: &str) -> usize {
-        0
+        let mut counter = 0;
+        if self.items.contains_key(key){
+            let mut frequency_node = self.frequency_head.clone();
+            println!("{:?}", frequency_node);
+            loop {
+                if frequency_node.borrow().next.is_none() {
+                    break
+                }
+                if frequency_node.borrow().items.iter().any(|f| f==key) {
+                    break
+                }
+                let tmp = frequency_node.borrow().next.as_ref().unwrap().clone();
+                frequency_node = tmp;
+                counter += 1;
+            }
+        }
+        counter
     }
 
     ///
@@ -114,24 +130,37 @@ impl LFU {
         if !self.items.contains_key(key) {
             return None;
         }
-        let tmp = self.items.get(key).unwrap();
-        let freq = &tmp.parent;
-        if Rc::ptr_eq(freq, &self.frequency_head) {
-            // key is assigned to current frequency_head -> obtain next FrequencyNode
-            let mut mut_freq = freq.borrow_mut();
-            match &mut_freq.next {
-                Some(next_freq) => {
-                    println!("aaaa");
+        let item = self.items.get_mut(key).unwrap();
+
+        item.parent = if Rc::ptr_eq(&item.parent, &self.frequency_head) {
+
+            let mut parent_frequency_node = item.parent.borrow_mut();
+            // pop the key
+            parent_frequency_node.items.retain(|x| x != key);
+
+            match parent_frequency_node.next {
+                Some(ref next_freq) => {
+                    // push the key
+                    next_freq.borrow_mut().items.push(key.to_owned());
+                    item.parent.clone()
                 },
                 None => {
-                    let mut next_freq = FrequencyNode::new();
-                    next_freq.value = mut_freq.value + 1;
-                    mut_freq.next = Some(Rc::new(next_freq));
-                }
-            };
+                    let mut next_freq = FrequencyNode::new(parent_frequency_node.value + 1, None);
+                    // push the key
 
-        }        
-        Some(&tmp.data)
+                    let ref_cell = Rc::new(RefCell::new(next_freq));
+                    parent_frequency_node.next = Some(ref_cell.clone());
+
+                    next_freq.items.push(key.to_owned());
+                    ref_cell.clone()
+                }
+            }
+
+        } else {
+            item.parent.clone()
+        };
+
+        Some(&self.items.get(key).unwrap().data)
     }
     ///
     /// Insert a value into LFU
@@ -144,12 +173,15 @@ impl LFU {
     /// lfu.insert("a".to_string(), Bytes::from("b"));
     /// ```
     pub fn insert(&mut self, key: String, value: Bytes) -> Option<Bytes> {
-        match self.items.insert(key, Item::new(value, self.frequency_head.clone())){
+        let key_clone = key.clone();
+        let previous = match self.items.insert(key, Item::new(value, self.frequency_head.clone())){
             Some(previous) => {
-                return Some(previous.data)
+                Some(previous.data)
             },
             None => None
-        }
+        };
+        self.frequency_head.borrow_mut().items.push(key_clone);
+        previous
     }
 }
 
@@ -178,6 +210,16 @@ mod tests {
         let mut lfu = LFU::new().max_size(3);
         lfu.insert("a".to_string(), Bytes::from("42"));
         lfu.insert("b".to_string(), Bytes::from("43"));
+        println!("{:?}", lfu);
+    }
+
+    #[test]
+    fn test_frequency() {
+        let mut lfu = LFU::new().max_size(3);
+        lfu.insert("a".to_string(), Bytes::from("42"));
+        lfu.get("a");
+        lfu.get("a");
+        assert_eq!(lfu.get_frequency("a"), 2);
         println!("{:?}", lfu);
     }
 }
