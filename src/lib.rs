@@ -127,25 +127,25 @@ impl LFU {
     /// assert_eq!(lfu.get("a"), Some(&Bytes::from("b")));
     /// ```
     pub fn get(&mut self, key: &str) -> Option<&Bytes> {
-        if !self.items.contains_key(key) {
-            return None;
+        if let Some(item) = self.items.get_mut(key) {
+            item.parent = {
+                let mut parent_frequency_node = item.parent.borrow_mut();
+                // pop the key
+                parent_frequency_node.items.retain(|x| x != key);
+                // provision next node
+                if parent_frequency_node.next.is_none() {
+                    let next_freq = FrequencyNode::new(parent_frequency_node.value + 1, None);
+                    let ref_cell = Rc::new(RefCell::new(next_freq));
+                    parent_frequency_node.next = Some(ref_cell.clone());
+                }
+                let next_frequency_node = parent_frequency_node.next.as_ref().unwrap();
+                next_frequency_node.borrow_mut().items.push(key.to_owned());
+                next_frequency_node.clone()
+            };
+            Some(&item.data)
+        } else {
+            None
         }
-        let item = self.items.get_mut(key).unwrap();
-        item.parent = {
-            let mut parent_frequency_node = item.parent.borrow_mut();
-            // pop the key
-            parent_frequency_node.items.retain(|x| x != key);
-            // provision next node
-            if parent_frequency_node.next.is_none() {
-                let next_freq = FrequencyNode::new(parent_frequency_node.value + 1, None);
-                let ref_cell = Rc::new(RefCell::new(next_freq));
-                parent_frequency_node.next = Some(ref_cell.clone());
-            }
-            let next_frequency_node = parent_frequency_node.next.as_ref().unwrap();
-            next_frequency_node.borrow_mut().items.push(key.to_owned());
-            next_frequency_node.clone()
-        };
-        Some(&item.data)
     }
     ///
     /// Insert a value into LFU
