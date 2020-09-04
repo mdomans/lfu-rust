@@ -88,11 +88,11 @@ impl LFU {
     /// lfu.insert("a".to_string(), Bytes::from("b"));
     /// assert_eq!(lfu.get_frequency("a"), 0);
     /// lfu.get("a");
-    /// assert_eq!(lfu.get_frequency("a"), 0);
-    /// lfu.get("a");
     /// assert_eq!(lfu.get_frequency("a"), 1);
     /// lfu.get("a");
     /// assert_eq!(lfu.get_frequency("a"), 2);
+    /// lfu.get("a");
+    /// assert_eq!(lfu.get_frequency("a"), 3);
     /// ```
     pub fn get_frequency(&mut self, key: &str) -> usize {
         let mut counter = 0;
