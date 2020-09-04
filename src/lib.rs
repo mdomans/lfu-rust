@@ -98,7 +98,6 @@ impl LFU {
         let mut counter = 0;
         if self.items.contains_key(key){
             let mut frequency_node = self.frequency_head.clone();
-            println!("{:?}", frequency_node);
             loop {
                 if frequency_node.borrow().next.is_none() {
                     break
